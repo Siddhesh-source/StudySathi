@@ -5,8 +5,12 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { auth } from './config';
+
+const googleProvider = new GoogleAuthProvider();
 
 export const signUp = async (email, password, displayName) => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -31,4 +35,9 @@ export const resetPassword = async (email) => {
 
 export const subscribeToAuthChanges = (callback) => {
   return onAuthStateChanged(auth, callback);
+};
+
+export const signInWithGoogle = async () => {
+  const result = await signInWithPopup(auth, googleProvider);
+  return result.user;
 };

@@ -141,21 +141,21 @@ const QuickDoubt = ({ embedded = false, onClose }) => {
   // Embedded version (for dashboard)
   if (embedded) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden h-full flex flex-col">
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden h-full flex flex-col card-shadow">
         {/* Header */}
-        <div className="bg-gradient-to-r from-cyan-600 to-teal-600 p-4 text-white">
+        <div className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#818CF8] p-4 text-white">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">❓</span>
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">❓</span>
               <div>
-                <h3 className="font-semibold">Ask a Doubt</h3>
-                <p className="text-cyan-100 text-xs">Get instant AI explanations</p>
+                <h3 className="font-display font-semibold text-base tracking-tight">Ask a Doubt</h3>
+                <p className="text-indigo-100 text-xs font-medium">Get instant AI explanations</p>
               </div>
             </div>
             {conversationHistory.length > 0 && (
               <button 
                 onClick={clearConversation}
-                className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition"
+                className="text-xs font-medium bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition"
               >
                 Clear
               </button>
@@ -168,7 +168,7 @@ const QuickDoubt = ({ embedded = false, onClose }) => {
           {/* Smart Suggestions */}
           {!answer && conversationHistory.length === 0 && (
             <div>
-              <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+              <p className="text-xs text-[#64748B] mb-2.5 flex items-center gap-1.5 font-medium">
                 {loadingSuggestions ? (
                   <>
                     <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
@@ -187,7 +187,7 @@ const QuickDoubt = ({ embedded = false, onClose }) => {
                     key={i}
                     onClick={() => handleSuggestionClick(s)}
                     disabled={loading}
-                    className="px-3 py-1.5 bg-slate-50 hover:bg-cyan-50 hover:text-cyan-700 border border-slate-200 hover:border-cyan-300 rounded-lg text-xs text-slate-600 transition text-left disabled:opacity-50"
+                    className="px-3 py-2 bg-[#F8FAFC] hover:bg-[#EEF2FF] hover:text-[#4F46E5] border border-[#E5E7EB] hover:border-[#C7D2FE] rounded-xl text-[13px] text-[#475569] transition text-left disabled:opacity-50 leading-relaxed font-medium"
                   >
                     {s}
                   </button>
@@ -196,9 +196,9 @@ const QuickDoubt = ({ embedded = false, onClose }) => {
               {!loadingSuggestions && (
                 <button
                   onClick={fetchSmartSuggestions}
-                  className="mt-2 text-xs text-cyan-600 hover:text-cyan-700 flex items-center gap-1"
+                  className="mt-3 text-xs text-[#4F46E5] hover:text-[#6366F1] flex items-center gap-1.5 font-semibold"
                 >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   Refresh suggestions
@@ -214,18 +214,18 @@ const QuickDoubt = ({ embedded = false, onClose }) => {
                 <div key={index} className="space-y-2">
                   {/* Question */}
                   <div className="flex justify-end">
-                    <div className="bg-cyan-50 border border-cyan-200 rounded-lg rounded-br-sm px-3 py-2 max-w-[85%]">
-                      <p className="text-sm text-cyan-800">{entry.question}</p>
+                    <div className="bg-[#EEF2FF] border border-[#C7D2FE] rounded-xl rounded-br-sm px-3.5 py-2.5 max-w-[85%]">
+                      <p className="text-[13px] text-[#4F46E5] font-medium leading-relaxed">{entry.question}</p>
                     </div>
                   </div>
                   {/* Answer */}
                   <div className="flex justify-start">
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg rounded-bl-sm px-3 py-2 max-w-[95%]">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="w-5 h-5 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-full flex items-center justify-center text-white text-[10px]">AI</span>
-                        <span className="text-[10px] text-slate-400">StudySaathi</span>
+                    <div className="bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl rounded-bl-sm px-3.5 py-2.5 max-w-[95%]">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="w-5 h-5 bg-gradient-to-br from-[#4F46E5] to-[#6366F1] rounded-full flex items-center justify-center text-white text-[10px] font-semibold">AI</span>
+                        <span className="text-[10px] text-[#64748B] font-medium">StudySaathi</span>
                       </div>
-                      <div className="prose prose-sm max-w-none text-slate-700">
+                      <div className="prose prose-sm max-w-none text-[#0F172A]">
                         <AnswerRenderer content={entry.answer} />
                       </div>
                     </div>
@@ -236,28 +236,28 @@ const QuickDoubt = ({ embedded = false, onClose }) => {
           )}
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-2 rounded-lg text-xs">
+            <div className="bg-[#FEF2F2] text-[#F87171] p-3 rounded-xl text-[13px] border border-[#FECACA] font-medium">
               {error}
             </div>
           )}
         </div>
 
         {/* Input Area */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50">
-          <div className="flex gap-2">
+        <div className="p-3.5 border-t border-[#E5E7EB] bg-[#F8FAFC]">
+          <div className="flex gap-2.5">
             <input
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your doubt..."
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+              className="flex-1 px-4 py-2.5 border border-[#E5E7EB] rounded-xl text-[13px] font-medium text-[#0F172A] placeholder:text-[#94A3B8] focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent outline-none"
               disabled={loading}
             />
             <button
               onClick={() => handleAsk()}
               disabled={loading || !question.trim()}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-lg font-medium hover:from-cyan-700 hover:to-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              className="px-4 py-2.5 bg-gradient-to-r from-[#4F46E5] to-[#6366F1] text-white rounded-xl font-semibold text-sm hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 btn-lift"
             >
               {loading ? (
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">

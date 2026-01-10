@@ -3,9 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { aiApi } from '../utils/api';
 
 const LEARNING_MODES = [
-  { id: 'understand', label: 'Understand', icon: '🎯', description: 'Learn the concept from scratch', tags: ['brief', 'detailed', 'analogy'], color: 'emerald' },
-  { id: 'practice', label: 'Practice', icon: '✍️', description: 'Test your knowledge', tags: ['questions', 'mistakes'], color: 'blue' },
-  { id: 'revise', label: 'Revise', icon: '⚡', description: 'Quick recap before exam', tags: ['quickrevision', 'exampoints', 'dosdonts'], color: 'amber' },
+  { id: 'understand', label: 'Understand', icon: '🎯', description: 'Learn the concept from scratch', tags: ['brief', 'detailed', 'analogy'], color: 'indigo' },
+  { id: 'practice', label: 'Practice', icon: '✍️', description: 'Test your knowledge', tags: ['questions', 'mistakes'], color: 'indigo' },
+  { id: 'revise', label: 'Revise', icon: '⚡', description: 'Quick recap before exam', tags: ['quickrevision', 'exampoints', 'dosdonts'], color: 'emerald' },
   { id: 'custom', label: 'Custom', icon: '🔧', description: 'Choose specific sections', tags: [], color: 'slate' },
 ];
 
@@ -162,8 +162,8 @@ const SmartLearningRoom = ({ embedded = false, onClose, onEndSession, initialTop
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Smart Learning Room</h2>
-            <p className="text-slate-500 text-sm">
+            <h2 className="font-display text-2xl font-bold text-[#0F172A] tracking-tight">Smart Learning Room</h2>
+            <p className="text-[#64748B] text-[14px] font-medium mt-1">
               {step === 1 && "What do you want to learn today?"}
               {step === 2 && "How do you want to learn it?"}
               {step === 3 && `Learning: ${topic}`}
@@ -171,11 +171,11 @@ const SmartLearningRoom = ({ embedded = false, onClose, onEndSession, initialTop
           </div>
           <div className="flex items-center gap-2">
             {step > 1 && step < 3 && (
-              <button onClick={() => setStep(step - 1)} className="text-sm text-emerald-600 hover:underline">← Back</button>
+              <button onClick={() => setStep(step - 1)} className="text-sm text-[#4F46E5] hover:underline">← Back</button>
             )}
             <button 
               onClick={handleEndSession}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#F8FAFC] hover:bg-[#EEF2FF] text-[#64748B] rounded-xl text-sm font-medium transition flex items-center gap-1.5 border border-[#E5E7EB]"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -188,12 +188,12 @@ const SmartLearningRoom = ({ embedded = false, onClose, onEndSession, initialTop
         {/* Progress Bar */}
         <div className="flex gap-2">
           {[1, 2, 3].map((s) => (
-            <div key={s} className={`flex-1 h-2 rounded-full transition-all ${s <= step ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+            <div key={s} className={`flex-1 h-2 rounded-full transition-all ${s <= step ? 'bg-[#4F46E5]' : 'bg-[#E5E7EB]'}`} />
           ))}
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
+          <div className="bg-[#FEF2F2] border border-[#FECACA] text-[#F87171] p-3 rounded-xl text-sm flex items-center gap-2">
             <span>⚠️</span> {error}
           </div>
         )}
@@ -348,16 +348,16 @@ const EmbeddedStepOne = ({ topic, setTopic, subject, setSubject, userSubjects, o
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main Input Area */}
       <div className="lg:col-span-2 space-y-5">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 card-shadow">
-          <label className="block text-sm font-semibold text-slate-800 mb-2">What topic do you want to learn?</label>
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 card-shadow">
+          <label className="block text-sm font-semibold text-[#0F172A] mb-2">What topic do you want to learn?</label>
           <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)}
             placeholder={getPlaceholder()}
-            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none text-lg" autoFocus />
+            className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent outline-none text-lg" autoFocus />
           
           {!topic && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-slate-500 flex items-center gap-1">
+                <p className="text-xs text-[#64748B] flex items-center gap-1">
                   {loadingSuggestions ? (
                     <><svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Loading suggestions...</>
                   ) : (
@@ -365,7 +365,7 @@ const EmbeddedStepOne = ({ topic, setTopic, subject, setSubject, userSubjects, o
                   )}
                 </p>
                 {!loadingSuggestions && (
-                  <button onClick={fetchPopularTopics} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                  <button onClick={fetchPopularTopics} className="text-xs text-[#4F46E5] hover:text-[#6366F1] flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     Refresh
                   </button>
@@ -374,55 +374,55 @@ const EmbeddedStepOne = ({ topic, setTopic, subject, setSubject, userSubjects, o
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((t, i) => (
                   <button key={i} onClick={() => setTopic(t)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 rounded-full text-sm text-slate-600 transition">{t}</button>
+                    className="px-3 py-1.5 bg-[#F8FAFC] hover:bg-[#EEF2FF] hover:text-[#4F46E5] rounded-full text-sm text-[#64748B] transition border border-[#E5E7EB]">{t}</button>
                 ))}
               </div>
             </div>
           )}
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 card-shadow">
-          <label className="block text-sm font-semibold text-slate-800 mb-2">
-            Subject <span className="font-normal text-slate-500">(helps AI give better answers)</span>
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 card-shadow">
+          <label className="block text-sm font-semibold text-[#0F172A] mb-2">
+            Subject <span className="font-normal text-[#64748B]">(helps AI give better answers)</span>
           </label>
           {userSubjects.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {userSubjects.map((s, i) => (
                 <button key={i} onClick={() => setSubject(s)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${subject === s ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>{s}</button>
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition ${subject === s ? 'bg-[#4F46E5] text-white' : 'bg-[#F8FAFC] text-[#0F172A] hover:bg-[#EEF2FF] border border-[#E5E7EB]'}`}>{s}</button>
               ))}
               <button onClick={() => setSubject('')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${!subject ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>Other</button>
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${!subject ? 'bg-[#4F46E5] text-white' : 'bg-[#F8FAFC] text-[#0F172A] hover:bg-[#EEF2FF] border border-[#E5E7EB]'}`}>Other</button>
             </div>
           ) : (
             <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g., Physics, Biology, Mathematics..."
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none" />
+              className="w-full px-4 py-3 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent outline-none" />
           )}
         </div>
 
         <button onClick={onNext} disabled={!canProceed}
-          className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl font-semibold hover:from-emerald-700 hover:to-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 btn-lift">
+          className="w-full py-4 bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#818CF8] text-white rounded-2xl font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 btn-lift">
           Continue <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
         </button>
       </div>
 
       {/* Tips Sidebar */}
       <div className="space-y-4">
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-4 card-shadow">
-          <h4 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <span className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center text-sm">🧠</span>
+        <div className="bg-[#EEF2FF] rounded-2xl border border-[#C7D2FE] p-4 card-shadow">
+          <h4 className="font-semibold text-[#0F172A] mb-3 flex items-center gap-2">
+            <span className="w-6 h-6 bg-white rounded flex items-center justify-center text-sm">🧠</span>
             How it works
           </h4>
-          <ol className="space-y-2 text-sm text-slate-600">
-            <li className="flex items-start gap-2"><span className="w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs shrink-0">1</span>Enter your topic</li>
-            <li className="flex items-start gap-2"><span className="w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs shrink-0">2</span>Choose learning mode</li>
-            <li className="flex items-start gap-2"><span className="w-5 h-5 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs shrink-0">3</span>Get AI-generated content</li>
+          <ol className="space-y-2 text-sm text-[#0F172A]">
+            <li className="flex items-start gap-2"><span className="w-5 h-5 bg-[#4F46E5] text-white rounded-full flex items-center justify-center text-xs shrink-0">1</span>Enter your topic</li>
+            <li className="flex items-start gap-2"><span className="w-5 h-5 bg-[#4F46E5] text-white rounded-full flex items-center justify-center text-xs shrink-0">2</span>Choose learning mode</li>
+            <li className="flex items-start gap-2"><span className="w-5 h-5 bg-[#4F46E5] text-white rounded-full flex items-center justify-center text-xs shrink-0">3</span>Get AI-generated content</li>
           </ol>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 card-shadow">
-          <h4 className="font-semibold text-slate-800 mb-2 text-sm">💡 Pro Tips</h4>
-          <ul className="space-y-1 text-xs text-slate-500">
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-4 card-shadow">
+          <h4 className="font-semibold text-[#0F172A] mb-2 text-sm">💡 Pro Tips</h4>
+          <ul className="space-y-1 text-xs text-[#64748B]">
             <li>• Be specific with your topic</li>
             <li>• Select your subject for better context</li>
             <li>• Use "Revise" mode before exams</li>
@@ -436,28 +436,27 @@ const EmbeddedStepOne = ({ topic, setTopic, subject, setSubject, userSubjects, o
 // Embedded Step 2: Mode Selection
 const EmbeddedStepTwo = ({ selectedMode, setSelectedMode, selectedTags, toggleTag, onBack, onGenerate, loading, canProceed }) => {
   const modeColors = {
-    emerald: 'from-emerald-500 to-emerald-600 border-emerald-300',
-    blue: 'from-blue-500 to-blue-600 border-blue-300',
-    amber: 'from-amber-500 to-amber-600 border-amber-300',
-    slate: 'from-slate-500 to-slate-600 border-slate-300',
+    indigo: 'from-[#4F46E5] to-[#6366F1] border-[#C7D2FE]',
+    emerald: 'from-[#10B981] to-[#34D399] border-[#A7F3D0]',
+    slate: 'from-[#64748B] to-[#94A3B8] border-[#E5E7EB]',
   };
 
   return (
     <div className="space-y-6">
       {/* Learning Modes */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 card-shadow">
-        <label className="block text-sm font-semibold text-slate-800 mb-4">Choose your learning mode</label>
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 card-shadow">
+        <label className="block text-sm font-semibold text-[#0F172A] mb-4">Choose your learning mode</label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {LEARNING_MODES.map((mode) => (
             <button key={mode.id} onClick={() => setSelectedMode(mode)}
               className={`p-4 rounded-2xl border-2 text-left topic-card ${
                 selectedMode?.id === mode.id
                   ? `${modeColors[mode.color].split(' ')[2]} bg-gradient-to-br ${modeColors[mode.color].split(' ').slice(0, 2).join(' ')} text-white`
-                  : 'border-slate-200 hover:border-slate-300 bg-white'
+                  : 'border-[#E5E7EB] hover:border-[#C7D2FE] bg-white'
               }`}>
               <div className="text-2xl mb-2">{mode.icon}</div>
-              <div className={`font-semibold text-sm ${selectedMode?.id === mode.id ? 'text-white' : 'text-slate-800'}`}>{mode.label}</div>
-              <div className={`text-xs mt-1 ${selectedMode?.id === mode.id ? 'text-white/80' : 'text-slate-500'}`}>{mode.description}</div>
+              <div className={`font-semibold text-sm ${selectedMode?.id === mode.id ? 'text-white' : 'text-[#0F172A]'}`}>{mode.label}</div>
+              <div className={`text-xs mt-1 ${selectedMode?.id === mode.id ? 'text-white/80' : 'text-[#64748B]'}`}>{mode.description}</div>
             </button>
           ))}
         </div>
@@ -465,15 +464,15 @@ const EmbeddedStepTwo = ({ selectedMode, setSelectedMode, selectedTags, toggleTa
 
       {/* Custom Tags */}
       {selectedMode?.id === 'custom' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 card-shadow">
-          <label className="block text-sm font-semibold text-slate-800 mb-3">Select content types</label>
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 card-shadow">
+          <label className="block text-sm font-semibold text-[#0F172A] mb-3">Select content types</label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {ALL_TAGS.map((tag) => (
               <button key={tag.id} onClick={() => toggleTag(tag.id)}
-                className={`p-3 rounded-xl border text-left topic-card ${selectedTags.includes(tag.id) ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                className={`p-3 rounded-xl border text-left topic-card ${selectedTags.includes(tag.id) ? 'border-[#4F46E5] bg-[#EEF2FF]' : 'border-[#E5E7EB] hover:border-[#C7D2FE]'}`}>
                 <div className="flex items-center gap-2">
                   <span>{tag.icon}</span>
-                  <span className="font-medium text-slate-800 text-sm">{tag.label}</span>
+                  <span className="font-medium text-[#0F172A] text-sm">{tag.label}</span>
                 </div>
               </button>
             ))}
@@ -483,12 +482,12 @@ const EmbeddedStepTwo = ({ selectedMode, setSelectedMode, selectedTags, toggleTa
 
       {/* Selected Tags Preview */}
       {selectedTags.length > 0 && (
-        <div className="bg-slate-50 rounded-xl p-4">
-          <p className="text-sm text-slate-600 mb-2">Content that will be generated:</p>
+        <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E5E7EB]">
+          <p className="text-sm text-[#64748B] mb-2">Content that will be generated:</p>
           <div className="flex flex-wrap gap-2">
             {selectedTags.map((tagId) => {
               const tag = ALL_TAGS.find(t => t.id === tagId);
-              return <span key={tagId} className="px-3 py-1 bg-white border border-slate-200 rounded-full text-sm text-slate-700 flex items-center gap-1">{tag?.icon} {tag?.label}</span>;
+              return <span key={tagId} className="px-3 py-1 bg-white border border-[#E5E7EB] rounded-full text-sm text-[#0F172A] flex items-center gap-1">{tag?.icon} {tag?.label}</span>;
             })}
           </div>
         </div>
@@ -496,9 +495,9 @@ const EmbeddedStepTwo = ({ selectedMode, setSelectedMode, selectedTags, toggleTa
 
       {/* Action Buttons */}
       <div className="flex gap-3">
-        {onBack && <button onClick={onBack} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-2xl font-medium hover:bg-slate-200 transition btn-lift">← Back</button>}
+        {onBack && <button onClick={onBack} className="px-6 py-3 bg-[#F8FAFC] text-[#64748B] rounded-2xl font-medium hover:bg-[#EEF2FF] transition btn-lift border border-[#E5E7EB]">← Back</button>}
         <button onClick={onGenerate} disabled={loading || !canProceed}
-          className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl font-semibold hover:from-emerald-700 hover:to-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 btn-lift">
+          className="flex-1 py-3 bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#818CF8] text-white rounded-2xl font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 btn-lift">
           {loading ? (<><svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Generating...</>) : (<>✨ Generate Content</>)}
         </button>
       </div>
@@ -516,18 +515,18 @@ const EmbeddedStepThree = ({ result, topic, subject, selectedTags, timeSpent, co
   return (
     <div className="space-y-5">
       {/* Topic Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 card-shadow">
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 card-shadow">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h3 className="text-xl font-bold text-slate-800">{topic}</h3>
-            <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
-              {subject && <span className="bg-slate-100 px-2 py-0.5 rounded">{subject}</span>}
+            <h3 className="text-xl font-bold text-[#0F172A]">{topic}</h3>
+            <p className="text-sm text-[#64748B] flex items-center gap-2 mt-1">
+              {subject && <span className="bg-[#F8FAFC] px-2 py-0.5 rounded border border-[#E5E7EB]">{subject}</span>}
               <span>⏱️ {formatTime(timeSpent)}</span>
             </p>
           </div>
           <div className="flex gap-2">
             <button onClick={onSave} disabled={saving || saved}
-              className={`px-4 py-2 rounded-lg font-medium transition text-sm ${saved ? 'bg-green-100 text-green-700' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}>
+              className={`px-4 py-2 rounded-xl font-medium transition text-sm ${saved ? 'bg-[#ECFDF5] text-[#10B981]' : 'bg-[#EEF2FF] text-[#4F46E5] hover:bg-[#C7D2FE]'}`}>
               {saved ? '✓ Saved' : saving ? 'Saving...' : '💾 Save'}
             </button>
             <button onClick={onNewTopic} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition text-sm">+ New Topic</button>
