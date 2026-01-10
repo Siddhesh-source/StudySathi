@@ -4,7 +4,7 @@ const cors = require('cors');
 const aiRoutes = require('./routes/ai');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080; // Cloud Run uses 8080 by default
 
 // CORS configuration
 app.use(cors({
