@@ -4,59 +4,31 @@
  * - Time spent studying
  * - Notes saved
  * - User confidence rating
+ * 
+ * Now uses StudyMetrics class for OOP-based calculations
  */
 
 const { db } = require('../config/firebase');
+const StudyMetrics = require('../models/StudyMetrics');
 
-// Strength thresholds
-const STRENGTH_THRESHOLDS = {
-  STRONG: 70,    // Score >= 70
-  MEDIUM: 40,    // Score >= 40
-  WEAK: 0,       // Score < 40
-};
-
-// Weight factors for strength calculation
-const WEIGHTS = {
-  timeSpent: 0.3,      // 30% weight
-  notesSaved: 0.25,    // 25% weight
-  confidence: 0.35,    // 35% weight
-  quizScore: 0.10,     // 10% weight (bonus)
-};
+// Re-export for backward compatibility
+const STRENGTH_THRESHOLDS = StudyMetrics.STRENGTH_THRESHOLDS;
 
 /**
  * Calculate topic strength score (0-100)
+ * Now uses StudyMetrics class
  */
 const calculateStrengthScore = (metrics) => {
-  const { timeSpentMinutes, notesCount, confidence, quizAvgScore } = metrics;
-
-  // Normalize time spent (max 120 mins = 100%)
-  const timeScore = Math.min((timeSpentMinutes / 120) * 100, 100);
-
-  // Normalize notes (max 5 notes = 100%)
-  const notesScore = Math.min((notesCount / 5) * 100, 100);
-
-  // Confidence is already 1-5, convert to 0-100
-  const confidenceScore = ((confidence - 1) / 4) * 100;
-
-  // Quiz score is already 0-100
-  const quizScore = quizAvgScore || 0;
-
-  // Weighted average
-  const totalScore =
-    timeScore * WEIGHTS.timeSpent +
-    notesScore * WEIGHTS.notesSaved +
-    confidenceScore * WEIGHTS.confidence +
-    quizScore * WEIGHTS.quizScore;
-
-  return Math.round(totalScore);
+  const studyMetrics = StudyMetrics.fromObject(metrics);
+  return studyMetrics.calculateStrengthScore();
 };
 
 /**
  * Get strength label from score
  */
 const getStrengthLabel = (score) => {
-  if (score >= STRENGTH_THRESHOLDS.STRONG) return 'strong';
-  if (score >= STRENGTH_THRESHOLDS.MEDIUM) return 'medium';
+  if (score >= StudyMetrics.STRENGTH_THRESHOLDS.STRONG) return 'strong';
+  if (score >= StudyMetrics.STRENGTH_THRESHOLDS.MEDIUM) return 'medium';
   return 'weak';
 };
 
@@ -85,22 +57,26 @@ const trackTimeSpent = async (userId, subject, topic, minutes) => {
       ...(!doc.exists && { createdAt: new Date() }),
     }, { merge: true });
 
-    // Recalculate strength
+    // Recalculate strength using StudyMetrics class
     const updatedDoc = await docRef.get();
-    const metrics = updatedDoc.data();
-    const score = calculateStrengthScore({
-      timeSpentMinutes: metrics.timeSpentMinutes || 0,
-      notesCount: metrics.notesCount || 0,
-      confidence: metrics.confidence || 3,
-      quizAvgScore: metrics.quizAvgScore || 0,
+    const metricsData = updatedDoc.data();
+    const studyMetrics = StudyMetrics.fromObject({
+      timeSpentMinutes: metricsData.timeSpentMinutes || 0,
+      notesCount: metricsData.notesCount || 0,
+      confidence: metricsData.confidence || 3,
+      quizAvgScore: metricsData.quizAvgScore || 0,
     });
+
+    const score = studyMetrics.calculateStrengthScore();
+    const breakdown = studyMetrics.getBreakdown();
 
     await docRef.update({
       strengthScore: score,
-      strengthLabel: getStrengthLabel(score),
+      strengthLabel: studyMetrics.getStrengthLabel(),
+      metricsBreakdown: breakdown,
     });
 
-    return { success: true, timeSpentMinutes: newTimeSpent, strengthScore: score };
+    return { success: true, timeSpentMinutes: newTimeSpent, strengthScore: score, breakdown };
   } catch (error) {
     console.error('Track time error:', error);
     return { success: false, error: error.message };
@@ -133,19 +109,21 @@ const trackNoteSaved = async (userId, subject, topic) => {
       ...(!doc.exists && { createdAt: new Date() }),
     }, { merge: true });
 
-    // Recalculate strength
+    // Recalculate strength using StudyMetrics class
     const updatedDoc = await docRef.get();
-    const metrics = updatedDoc.data();
-    const score = calculateStrengthScore({
-      timeSpentMinutes: metrics.timeSpentMinutes || 0,
-      notesCount: metrics.notesCount || 0,
-      confidence: metrics.confidence || 3,
-      quizAvgScore: metrics.quizAvgScore || 0,
+    const metricsData = updatedDoc.data();
+    const studyMetrics = StudyMetrics.fromObject({
+      timeSpentMinutes: metricsData.timeSpentMinutes || 0,
+      notesCount: metricsData.notesCount || 0,
+      confidence: metricsData.confidence || 3,
+      quizAvgScore: metricsData.quizAvgScore || 0,
     });
+
+    const score = studyMetrics.calculateStrengthScore();
 
     await docRef.update({
       strengthScore: score,
-      strengthLabel: getStrengthLabel(score),
+      strengthLabel: studyMetrics.getStrengthLabel(),
     });
 
     return { success: true, notesCount: newNotesCount, strengthScore: score };
@@ -176,22 +154,32 @@ const updateConfidence = async (userId, subject, topic, confidence) => {
       ...(!doc.exists && { createdAt: new Date() }),
     }, { merge: true });
 
-    // Recalculate strength
+    // Recalculate strength using StudyMetrics class
     const updatedDoc = await docRef.get();
-    const metrics = updatedDoc.data();
-    const score = calculateStrengthScore({
-      timeSpentMinutes: metrics.timeSpentMinutes || 0,
-      notesCount: metrics.notesCount || 0,
-      confidence: metrics.confidence || 3,
-      quizAvgScore: metrics.quizAvgScore || 0,
+    const metricsData = updatedDoc.data();
+    const studyMetrics = StudyMetrics.fromObject({
+      timeSpentMinutes: metricsData.timeSpentMinutes || 0,
+      notesCount: metricsData.notesCount || 0,
+      confidence: metricsData.confidence || 3,
+      quizAvgScore: metricsData.quizAvgScore || 0,
     });
+
+    const score = studyMetrics.calculateStrengthScore();
+    const suggestions = studyMetrics.getImprovementSuggestions();
 
     await docRef.update({
       strengthScore: score,
-      strengthLabel: getStrengthLabel(score),
+      strengthLabel: studyMetrics.getStrengthLabel(),
+      improvementSuggestions: suggestions,
     });
 
-    return { success: true, confidence, strengthScore: score, strengthLabel: getStrengthLabel(score) };
+    return { 
+      success: true, 
+      confidence, 
+      strengthScore: score, 
+      strengthLabel: studyMetrics.getStrengthLabel(),
+      suggestions 
+    };
   } catch (error) {
     console.error('Update confidence error:', error);
     return { success: false, error: error.message };

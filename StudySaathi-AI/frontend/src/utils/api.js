@@ -1,4 +1,11 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+// Log API configuration on load
+console.log('🔧 API Configuration:', {
+  url: API_URL,
+  mode: import.meta.env.MODE,
+  dev: import.meta.env.DEV
+});
 
 class ApiError extends Error {
   constructor(message, status, data) {
@@ -24,24 +31,30 @@ const handleResponse = async (response) => {
 
 const api = {
   async get(endpoint) {
+    const url = `${API_URL}${endpoint}`;
+    console.log(`📡 GET ${url}`);
     try {
-      const response = await fetch(`${API_URL}${endpoint}`);
+      const response = await fetch(url);
       return handleResponse(response);
     } catch (error) {
+      console.error(`❌ GET ${url} failed:`, error);
       if (error instanceof ApiError) throw error;
       throw new ApiError('Network error. Please check your connection.', 0, null);
     }
   },
 
   async post(endpoint, body) {
+    const url = `${API_URL}${endpoint}`;
+    console.log(`📡 POST ${url}`, { bodyKeys: Object.keys(body || {}) });
     try {
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       return handleResponse(response);
     } catch (error) {
+      console.error(`❌ POST ${url} failed:`, error);
       if (error instanceof ApiError) throw error;
       throw new ApiError('Network error. Please check your connection.', 0, null);
     }

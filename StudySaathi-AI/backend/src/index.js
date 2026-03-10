@@ -16,9 +16,12 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 
-// Request logging
+// Request logging with more details
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`);
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${req.method} ${req.path}`);
+  console.log(`  Origin: ${req.get('origin') || 'N/A'}`);
+  console.log(`  User-Agent: ${req.get('user-agent')?.substring(0, 50) || 'N/A'}`);
   next();
 });
 
@@ -51,6 +54,12 @@ app.use((err, req, res, _next) => {
 });
 
 app.listen(PORT, () => {
+  console.log(`\n${'='.repeat(50)}`);
   console.log(`🚀 StudySaathi API running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔑 Gemini API Key: ${process.env.GEMINI_API_KEY ? '✓ Configured' : '✗ Missing'}`);
+  console.log(`🔥 Firebase: ${process.env.FIREBASE_SERVICE_ACCOUNT_KEY ? '✓ Configured' : '✗ Missing'}`);
+  console.log(`🌐 Local URL: http://localhost:${PORT}`);
+  console.log(`📋 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`${'='.repeat(50)}\n`);
 });

@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { ContentGeneratorFactory } = require('../models/ContentGenerator');
 
 // Validate API key on module load
 if (!process.env.GEMINI_API_KEY) {
@@ -36,7 +37,7 @@ Response Guidelines:
 
 Remember: Your goal is to help students score maximum marks in minimum time.`;
 
-const getModel = (modelName = 'gemini-2.0-flash') => {
+const getModel = (modelName = 'gemini-2.5-flash') => {
   return genAI.getGenerativeModel({ 
     model: modelName,
     systemInstruction: SYSTEM_PROMPT,
@@ -62,7 +63,7 @@ const withRetry = async (fn, maxRetries = 2, delay = 1000) => {
 
 const sendPrompt = async (prompt, options = {}) => {
   const {
-    modelName = 'gemini-2.0-flash',
+    modelName = 'gemini-2.5-flash',
     temperature = 0.7,
     maxTokens = 2048,
   } = options;
@@ -106,7 +107,7 @@ const sendPrompt = async (prompt, options = {}) => {
 
 const sendChatPrompt = async (messages, options = {}) => {
   const {
-    modelName = 'gemini-2.0-flash',
+    modelName = 'gemini-2.5-flash',
     temperature = 0.7,
     maxTokens = 2048,
   } = options;
@@ -145,33 +146,41 @@ const sendChatPrompt = async (messages, options = {}) => {
 };
 
 const generateStudyContent = async (subject, topic, contentType, options = {}) => {
-  const prompts = {
-    explanation: `Explain the topic "${topic}" in ${subject} for exam preparation. Include key concepts, important formulas (if any), and exam tips.`,
-    
-    flashcards: `Create 5 flashcards for the topic "${topic}" in ${subject}. Format each flashcard as:
+  // Use OOP-based ContentGenerator classes
+  try {
+    const examType = options.examType || null;
+    const generator = ContentGeneratorFactory.create(contentType, subject, topic, examType, options);
+    return await generator.generate(options);
+  } catch (error) {
+    // Fallback to legacy implementation for unsupported types
+    const prompts = {
+      explanation: `Explain the topic "${topic}" in ${subject} for exam preparation. Include key concepts, important formulas (if any), and exam tips.`,
+      
+      flashcards: `Create 5 flashcards for the topic "${topic}" in ${subject}. Format each flashcard as:
 Q: [Question]
 A: [Answer]
 Make questions exam-focused and answers concise but complete.`,
-    
-    quiz: `Create 5 multiple choice questions on "${topic}" in ${subject} for exam practice. Format:
+      
+      quiz: `Create 5 multiple choice questions on "${topic}" in ${subject} for exam practice. Format:
 Q1: [Question]
 a) [Option]
 b) [Option]
 c) [Option]
 d) [Option]
 Answer: [Correct option with brief explanation]`,
-    
-    summary: `Provide a quick revision summary of "${topic}" in ${subject}. Include:
+      
+      summary: `Provide a quick revision summary of "${topic}" in ${subject}. Include:
 - Key points (bullet points)
 - Important formulas/facts
 - Common exam patterns
 - Memory tricks if any`,
-    
-    pyq_style: `Create 3 previous year exam style questions on "${topic}" in ${subject}. Include variety - one easy, one medium, one hard. Provide solutions.`,
-  };
+      
+      pyq_style: `Create 3 previous year exam style questions on "${topic}" in ${subject}. Include variety - one easy, one medium, one hard. Provide solutions.`,
+    };
 
-  const prompt = prompts[contentType] || prompts.explanation;
-  return sendPrompt(prompt, options);
+    const prompt = prompts[contentType] || prompts.explanation;
+    return sendPrompt(prompt, options);
+  }
 };
 
 /**
@@ -565,7 +574,7 @@ Return ONLY a JSON array of 8 topic strings:
  */
 const sendPromptStream = async (prompt, onChunk, options = {}) => {
   const {
-    modelName = 'gemini-2.0-flash',
+    modelName = 'gemini-2.5-flash',
     temperature = 0.7,
     maxTokens = 2048,
   } = options;

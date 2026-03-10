@@ -37,6 +37,7 @@ StudySaathi helps students prepare smarter by providing:
 
 ## Architecture
 
+### System Architecture
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │  React Frontend │────▶│  Express API    │────▶│   Gemini AI     │
@@ -50,6 +51,34 @@ StudySaathi helps students prepare smarter by providing:
                         │  + Firebase Auth│
                         └─────────────────┘
 ```
+
+### OOP Architecture (Backend)
+
+**Strong Object-Oriented Design** with proper class hierarchies, design patterns, and encapsulation:
+
+#### Core Classes
+
+1. **StudyMetrics** - Encapsulates metric calculations with private fields and validation
+2. **StreakManager** - Manages study streaks with state management and business logic
+3. **ContentGenerator Hierarchy** - Abstract base class with 4 specialized subclasses:
+   - `ExplanationGenerator`
+   - `QuizGenerator`
+   - `FlashcardGenerator`
+   - `SummaryGenerator`
+
+#### Design Patterns Implemented
+- **Factory Pattern** - `ContentGeneratorFactory` for object creation
+- **Template Method Pattern** - `ContentGenerator.generate()` defines algorithm structure
+- **Strategy Pattern** - Interchangeable content generation strategies
+
+#### OOP Principles Demonstrated
+✅ Encapsulation (private fields with `#`)  
+✅ Inheritance (2-level class hierarchy)  
+✅ Polymorphism (method overriding)  
+✅ Abstraction (abstract base classes)  
+✅ SOLID Principles
+
+📖 **[View Detailed OOP Documentation](StudySaathi-AI/backend/OOP_ARCHITECTURE.md)**
 
 ## Quick Start
 

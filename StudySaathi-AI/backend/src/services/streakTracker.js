@@ -1,69 +1,33 @@
 /**
  * Streak Tracker Service
  * Tracks daily study streaks and generates motivational messages
+ * Now uses StreakManager class for OOP-based streak management
  */
 
 const { db } = require('../config/firebase');
-const { sendPrompt } = require('./gemini');
+const StreakManager = require('../models/StreakManager');
 
 /**
  * Generate motivational message based on streak and user context
+ * Wrapper function for backward compatibility
  */
 const generateMotivationalMessage = async (streakData) => {
-  const { currentStreak, longestStreak, examName, daysToExam, userName } = streakData;
-
-  let context = '';
-  if (currentStreak === 0) {
-    context = 'Student missed yesterday. Encourage them to start fresh today.';
-  } else if (currentStreak === 1) {
-    context = 'Student just started their streak. Motivate them to keep going.';
-  } else if (currentStreak < 7) {
-    context = `Student has a ${currentStreak}-day streak. Encourage consistency.`;
-  } else if (currentStreak < 30) {
-    context = `Amazing ${currentStreak}-day streak! Celebrate their dedication.`;
-  } else {
-    context = `Incredible ${currentStreak}-day streak! They are a champion.`;
-  }
-
-  if (daysToExam && daysToExam < 30) {
-    context += ` Exam is in ${daysToExam} days - add urgency but stay positive.`;
-  }
-
-  const prompt = `Generate a short, motivational message (2-3 sentences max) for an Indian student preparing for ${examName || 'competitive exams'}.
-
-Context: ${context}
-${userName ? `Student name: ${userName}` : ''}
-Current streak: ${currentStreak} days
-Longest streak: ${longestStreak} days
-
-Guidelines:
-- Use simple Indian English
-- Be warm and encouraging like a supportive elder sibling
-- Include a relevant emoji
-- If streak is broken, be understanding not harsh
-- Reference their progress or exam if relevant
-- Keep it SHORT and impactful
-
-Return ONLY the message, nothing else.`;
-
-  const result = await sendPrompt(prompt, { temperature: 0.8, maxTokens: 150 });
+  const streakManager = new StreakManager('temp', {
+    currentStreak: streakData.currentStreak,
+    longestStreak: streakData.longestStreak,
+    userContext: {
+      examName: streakData.examName,
+      userName: streakData.userName,
+      examDate: streakData.daysToExam ? new Date(Date.now() + streakData.daysToExam * 24 * 60 * 60 * 1000) : null
+    }
+  });
   
-  if (result.success) {
-    return result.text.trim();
-  }
-  
-  // Fallback messages
-  const fallbacks = [
-    "🌟 Every day you study brings you closer to your dreams. Keep going!",
-    "💪 Consistency is key! Your dedication will pay off.",
-    "🎯 Focus on progress, not perfection. You're doing great!",
-    "📚 Small steps daily lead to big achievements. Keep it up!",
-  ];
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+  return await streakManager.generateMotivationalMessage();
 };
 
 /**
  * Check and update user's streak
+ * Now uses StreakManager class for OOP-based management
  */
 const updateStreak = async (userId) => {
   if (!db) return { success: false, error: 'Database not configured' };
@@ -72,92 +36,74 @@ const updateStreak = async (userId) => {
     const userRef = db.collection('users').doc(userId);
     const streakRef = userRef.collection('streaks').doc('current');
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
-
+    // Get existing streak data
     const streakDoc = await streakRef.get();
-    const streakData = streakDoc.exists ? streakDoc.data() : null;
+    const streakData = streakDoc.exists ? streakDoc.data() : {};
 
-    let currentStreak = 1;
-    let longestStreak = 1;
-    let lastActiveDate = todayStr;
-    let streakBroken = false;
-
-    if (streakData) {
-      const lastActive = new Date(streakData.lastActiveDate);
-      lastActive.setHours(0, 0, 0, 0);
-      
-      const diffDays = Math.floor((today - lastActive) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) {
-        // Already logged today
-        return {
-          success: true,
-          currentStreak: streakData.currentStreak,
-          longestStreak: streakData.longestStreak,
-          lastActiveDate: streakData.lastActiveDate,
-          message: streakData.todayMessage,
-          alreadyLogged: true,
-        };
-      } else if (diffDays === 1) {
-        // Consecutive day - extend streak
-        currentStreak = streakData.currentStreak + 1;
-        longestStreak = Math.max(currentStreak, streakData.longestStreak);
-      } else {
-        // Streak broken
-        currentStreak = 1;
-        longestStreak = streakData.longestStreak;
-        streakBroken = true;
-      }
-    }
-
-    // Get user info for personalized message
+    // Get user info for context
     const userDoc = await userRef.get();
     const userData = userDoc.exists ? userDoc.data() : {};
-    
-    let daysToExam = null;
-    if (userData.examDate) {
-      const examDate = new Date(userData.examDate);
-      daysToExam = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-    }
 
-    // Generate motivational message
-    const message = await generateMotivationalMessage({
-      currentStreak,
-      longestStreak,
+    // Create StreakManager instance
+    const streakManager = StreakManager.fromFirestoreData(userId, {
+      ...streakData,
       examName: userData.examName,
-      daysToExam,
       userName: userData.displayName,
+      examDate: userData.examDate
     });
 
-    // Update streak data
+    // Check if already logged today
+    if (streakManager.hasStudiedToday()) {
+      const stats = streakManager.getStatistics();
+      return {
+        success: true,
+        currentStreak: stats.currentStreak,
+        longestStreak: stats.longestStreak,
+        lastActiveDate: stats.lastActiveDate,
+        message: streakData.todayMessage,
+        alreadyLogged: true,
+      };
+    }
+
+    // Update streak
+    const updateResult = streakManager.updateForToday();
+
+    // Generate motivational message
+    const message = await streakManager.generateMotivationalMessage();
+
+    // Get milestone info
+    const milestone = streakManager.getMilestone();
+
+    // Save to Firestore
+    const dataToSave = streakManager.toObject();
     await streakRef.set({
-      currentStreak,
-      longestStreak,
-      lastActiveDate: todayStr,
+      currentStreak: dataToSave.currentStreak,
+      longestStreak: dataToSave.longestStreak,
+      lastActiveDate: dataToSave.lastActiveDate,
       todayMessage: message,
-      streakHistory: streakData?.streakHistory 
-        ? [...streakData.streakHistory.slice(-29), { date: todayStr, streak: currentStreak }]
-        : [{ date: todayStr, streak: currentStreak }],
+      streakHistory: dataToSave.streakHistory,
+      milestone: milestone.current,
+      nextMilestone: milestone.next,
       updatedAt: new Date(),
     });
 
     // Update user's streak summary
     await userRef.set({
-      currentStreak,
-      longestStreak,
-      lastStudyDate: todayStr,
+      currentStreak: dataToSave.currentStreak,
+      longestStreak: dataToSave.longestStreak,
+      lastStudyDate: dataToSave.lastActiveDate,
     }, { merge: true });
 
     return {
       success: true,
-      currentStreak,
-      longestStreak,
-      lastActiveDate: todayStr,
+      currentStreak: dataToSave.currentStreak,
+      longestStreak: dataToSave.longestStreak,
+      lastActiveDate: dataToSave.lastActiveDate,
       message,
-      streakBroken,
-      isNewStreak: currentStreak === 1 && !streakBroken,
+      streakBroken: updateResult.streakBroken,
+      isNewRecord: updateResult.isNewRecord,
+      milestone: milestone.current,
+      nextMilestone: milestone.next,
     };
   } catch (error) {
     console.error('Update streak error:', error);
@@ -167,6 +113,7 @@ const updateStreak = async (userId) => {
 
 /**
  * Get user's current streak data
+ * Now uses StreakManager class
  */
 const getStreakData = async (userId) => {
   if (!db) return { success: false, error: 'Database not configured' };
@@ -187,33 +134,37 @@ const getStreakData = async (userId) => {
 
     const data = streakDoc.data();
     
-    // Check if streak is still valid (not broken)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const lastActive = new Date(data.lastActiveDate);
-    lastActive.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((today - lastActive) / (1000 * 60 * 60 * 24));
+    // Create StreakManager instance
+    const streakManager = StreakManager.fromFirestoreData(userId, data);
+    
+    // Get statistics
+    const stats = streakManager.getStatistics();
+    const milestone = streakManager.getMilestone();
 
-    if (diffDays > 1) {
-      // Streak is broken but not yet updated
+    if (streakManager.isStreakBroken()) {
       return {
         success: true,
         currentStreak: 0,
-        longestStreak: data.longestStreak,
+        longestStreak: stats.longestStreak,
         message: "😊 Your streak reset, but that's okay! Start fresh today.",
-        streakHistory: data.streakHistory || [],
+        streakHistory: stats.totalDaysTracked,
         streakBroken: true,
+        milestone: milestone.next,
       };
     }
 
     return {
       success: true,
-      currentStreak: data.currentStreak,
-      longestStreak: data.longestStreak,
-      lastActiveDate: data.lastActiveDate,
+      currentStreak: stats.currentStreak,
+      longestStreak: stats.longestStreak,
+      lastActiveDate: stats.lastActiveDate,
       message: data.todayMessage,
       streakHistory: data.streakHistory || [],
-      studiedToday: diffDays === 0,
+      studiedToday: stats.hasStudiedToday,
+      streakPercentage: stats.streakPercentage,
+      milestone: milestone.current,
+      nextMilestone: milestone.next,
+      daysToNextMilestone: milestone.daysToNext,
     };
   } catch (error) {
     console.error('Get streak error:', error);
