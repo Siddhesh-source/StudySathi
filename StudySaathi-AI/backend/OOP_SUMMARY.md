@@ -1,6 +1,6 @@
 # OOP Implementation Summary
 
-## Quick Reference: What Makes This a Strong OOP Project
+## Quick Reference: Key OOPS Concepts Used
 
 ### ✅ Multiple Related Classes (8 classes)
 
