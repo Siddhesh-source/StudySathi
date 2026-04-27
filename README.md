@@ -695,7 +695,7 @@ MIT License - see LICENSE file for details
 
 Built with ❤️ for Indian students preparing for competitive exams.
 
-**Team:** GDG Hackathon 2025  
+**Team:** EDI GROUP 15 
 **Support:** [Create an issue](https://github.com/your-repo/issues)
 
 ---
