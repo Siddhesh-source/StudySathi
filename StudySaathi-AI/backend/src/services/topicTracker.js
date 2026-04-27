@@ -9,7 +9,7 @@
  */
 
 const { db } = require('../config/firebase');
-const StudyMetrics = require('../models/StudyMetrics');
+const { StudyMetrics } = require('../models/StudyMetrics');
 
 // Re-export for backward compatibility
 const STRENGTH_THRESHOLDS = StudyMetrics.STRENGTH_THRESHOLDS;

@@ -1,15 +1,74 @@
 /**
+ * Scoring Strategy classes — Strategy Pattern
+ * Swap scoring algorithms without changing StudyMetrics.
+ * Each exam type can have its own weights.
+ */
+class ScoringStrategy {
+  /**
+   * @param {StudyMetrics} metrics
+   * @returns {number} 0-100
+   */
+  // eslint-disable-next-line no-unused-vars
+  calculate(metrics) {
+    throw new Error('calculate() must be implemented by subclass');
+  }
+}
+
+class DefaultScoringStrategy extends ScoringStrategy {
+  calculate(metrics) {
+    const w = StudyMetrics.WEIGHTS;
+    return Math.round(
+      metrics.getTimeScore()       * w.timeSpent +
+      metrics.getNotesScore()      * w.notesSaved +
+      metrics.getConfidenceScore() * w.confidence +
+      metrics.quizAvgScore         * w.quizScore
+    );
+  }
+}
+
+class JEEScoringStrategy extends ScoringStrategy {
+  // JEE emphasises quiz performance and time more heavily
+  calculate(metrics) {
+    return Math.round(
+      metrics.getTimeScore()       * 0.25 +
+      metrics.getNotesScore()      * 0.10 +
+      metrics.getConfidenceScore() * 0.25 +
+      metrics.quizAvgScore         * 0.40
+    );
+  }
+}
+
+class NEETScoringStrategy extends ScoringStrategy {
+  // NEET emphasises confidence and notes (concept clarity)
+  calculate(metrics) {
+    return Math.round(
+      metrics.getTimeScore()       * 0.20 +
+      metrics.getNotesScore()      * 0.30 +
+      metrics.getConfidenceScore() * 0.40 +
+      metrics.quizAvgScore         * 0.10
+    );
+  }
+}
+
+// Registry for easy extensibility
+const SCORING_STRATEGIES = {
+  default: new DefaultScoringStrategy(),
+  JEE: new JEEScoringStrategy(),
+  NEET: new NEETScoringStrategy(),
+};
+
+/**
  * Study Metrics Class
  * Encapsulates all metric calculations and strength analysis
- * Demonstrates: Encapsulation, Single Responsibility Principle
+ * Demonstrates: Encapsulation, Single Responsibility, Strategy Pattern
  */
-
 class StudyMetrics {
   // Private fields (using convention)
   #timeSpentMinutes;
   #notesCount;
   #confidence;
   #quizAvgScore;
+  #scoringStrategy;
   
   // Static constants
   static STRENGTH_THRESHOLDS = {
@@ -28,11 +87,26 @@ class StudyMetrics {
   static MAX_TIME_FOR_FULL_SCORE = 120; // minutes
   static MAX_NOTES_FOR_FULL_SCORE = 5;
 
-  constructor(timeSpentMinutes = 0, notesCount = 0, confidence = 3, quizAvgScore = 0) {
+  constructor(timeSpentMinutes = 0, notesCount = 0, confidence = 3, quizAvgScore = 0, examType = 'default') {
     this.#timeSpentMinutes = timeSpentMinutes;
     this.#notesCount = notesCount;
     this.#confidence = this._clampConfidence(confidence);
     this.#quizAvgScore = quizAvgScore;
+    this.#scoringStrategy = SCORING_STRATEGIES[examType] || SCORING_STRATEGIES.default;
+  }
+
+  // Strategy Pattern — swap scoring algorithm at runtime
+  setScoringStrategy(strategyOrExamType) {
+    if (typeof strategyOrExamType === 'string') {
+      const s = SCORING_STRATEGIES[strategyOrExamType];
+      if (!s) throw new Error(`Unknown exam type strategy: ${strategyOrExamType}`);
+      this.#scoringStrategy = s;
+    } else if (strategyOrExamType instanceof ScoringStrategy) {
+      this.#scoringStrategy = strategyOrExamType;
+    } else {
+      throw new Error('Must pass an exam type string or ScoringStrategy instance');
+    }
+    return this;
   }
 
   // Getters (Encapsulation)
@@ -79,20 +153,9 @@ class StudyMetrics {
     return ((this.#confidence - 1) / 4) * 100;
   }
 
-  // Calculate overall strength score (0-100)
+  // Calculate overall strength score — delegates to Strategy
   calculateStrengthScore() {
-    const timeScore = this.getTimeScore();
-    const notesScore = this.getNotesScore();
-    const confidenceScore = this.getConfidenceScore();
-    const quizScore = this.#quizAvgScore;
-
-    const totalScore =
-      timeScore * StudyMetrics.WEIGHTS.timeSpent +
-      notesScore * StudyMetrics.WEIGHTS.notesSaved +
-      confidenceScore * StudyMetrics.WEIGHTS.confidence +
-      quizScore * StudyMetrics.WEIGHTS.quizScore;
-
-    return Math.round(totalScore);
+    return this.#scoringStrategy.calculate(this);
   }
 
   // Get strength label
@@ -210,6 +273,18 @@ class StudyMetrics {
 
     return suggestions;
   }
+  toString() {
+    return `StudyMetrics | score:${this.calculateStrengthScore()} | ${this.getStrengthLabel()} | ${this.#timeSpentMinutes}min`;
+  }
+
+  toJSON() { return this.toObject(); }
 }
 
-module.exports = StudyMetrics;
+module.exports = {
+  StudyMetrics,
+  ScoringStrategy,
+  DefaultScoringStrategy,
+  JEEScoringStrategy,
+  NEETScoringStrategy,
+  SCORING_STRATEGIES,
+};

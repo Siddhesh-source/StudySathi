@@ -5,6 +5,16 @@ import { logOut } from '../firebase/auth';
 import { aiApi } from '../utils/api';
 import SmartLearningRoom from '../components/SmartLearningRoom';
 import QuickDoubt from '../components/QuickDoubt';
+import PomodoroTimer from '../components/PomodoroTimer';
+import AchievementBadges from '../components/AchievementBadges';
+import StudyHeatmap from '../components/StudyHeatmap';
+import DailyChallenge from '../components/DailyChallenge';
+import SpacedRepetitionCard from '../components/SpacedRepetitionCard';
+import KnowledgeGraphView from '../components/KnowledgeGraphView';
+import LearningAnalyticsDashboard from '../components/LearningAnalyticsDashboard';
+import ScorePredictor from '../components/ScorePredictor';
+import CognitiveLoadAlert from '../components/CognitiveLoadAlert';
+import PYQTestPanel from '../components/PYQTestPanel';
 
 // Error Boundary Component
 class ErrorBoundary extends Component {
@@ -123,6 +133,9 @@ const Dashboard = () => {
           <NavItem icon="📝" label="My Notes" active={activeTab === 'notes'} onClick={() => setActiveTab('notes')} />
           <NavItem icon="📊" label="Progress" active={activeTab === 'progress'} onClick={() => setActiveTab('progress')} />
           <NavItem icon="📅" label="Study Plan" active={activeTab === 'plan'} onClick={() => setActiveTab('plan')} />
+          <NavItem icon="📝" label="PYQ Tests" active={activeTab === 'pyq'} onClick={() => setActiveTab('pyq')} />
+          <NavItem icon="⚡" label="Extras" active={activeTab === 'extras'} onClick={() => setActiveTab('extras')} />
+          <NavItem icon="🔬" label="Research" active={activeTab === 'research'} onClick={() => setActiveTab('research')} />
         </nav>
         <div className="p-2 lg:p-4 border-t border-[#E5E7EB]">
           <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F8FAFC] cursor-pointer transition-all" onClick={handleLogout}>
@@ -169,6 +182,9 @@ const Dashboard = () => {
           {activeTab === 'notes' && <ErrorBoundary><NotesTab notes={notes} loading={loading} onRefresh={fetchNotes} /></ErrorBoundary>}
           {activeTab === 'progress' && <ProgressTab progress={progress} loading={loading} onRefresh={fetchAllData} />}
           {activeTab === 'plan' && <PlanTab studyPlan={studyPlan} userProfile={userProfile} loading={loading} onRefresh={fetchAllData} />}
+          {activeTab === 'pyq' && <div className="h-full"><PYQTestPanel /></div>}
+          {activeTab === 'extras' && <ExtrasTab streakData={streakData} userProfile={userProfile} />}
+          {activeTab === 'research' && <ResearchTab userProfile={userProfile} />}
         </div>
       </main>
     </div>
@@ -1419,6 +1435,134 @@ const NoteContentRenderer = ({ content }) => {
     console.error('[DEBUG] Error rendering content:', e);
     return <pre className="text-sm text-slate-700 whitespace-pre-wrap">{contentString}</pre>;
   }
+};
+
+// ── Extras Tab ───────────────────────────────────────────────────────────────
+const ExtrasTab = ({ streakData, userProfile }) => {
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderLoading, setLeaderLoading] = useState(true);
+
+  useEffect(() => {
+    aiApi.getLeaderboard(10)
+      .then(d => { if (d.success) setLeaderboard(d.leaderboard || []); })
+      .catch(() => {})
+      .finally(() => setLeaderLoading(false));
+  }, []);
+
+  const subject = userProfile?.subjects?.[0] || '';
+  const topic = userProfile?.topics?.[subject]?.[0] || '';
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-1">⚡ Extras</h2>
+        <p className="text-gray-500 text-sm">Pomodoro timer, achievements, heatmap & leaderboard</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pomodoro */}
+        <PomodoroTimer
+          subject={subject}
+          topic={topic}
+          onSessionComplete={(mins) => console.log(`Pomodoro done: ${mins} min`)}
+        />
+
+        {/* Daily Challenge */}
+        <DailyChallenge subject={subject} topic={topic} examType={userProfile?.examName} />
+      </div>
+
+      {/* Heatmap */}
+      <StudyHeatmap streakHistory={streakData?.streakHistory || []} />
+
+      {/* Achievements */}
+      <AchievementBadges />
+
+      {/* Leaderboard */}
+      <div className="bg-white rounded-2xl shadow p-5">
+        <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2 mb-4">
+          🏆 Leaderboard
+          <span className="text-xs font-normal text-gray-400 ml-1">Top streakers</span>
+        </h3>
+        {leaderLoading ? (
+          <div className="space-y-2">
+            {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-4">No data yet. Start your streak!</p>
+        ) : (
+          <div className="space-y-2">
+            {leaderboard.map((entry) => (
+              <div
+                key={entry.userId}
+                className={`flex items-center gap-3 p-3 rounded-xl ${
+                  entry.rank <= 3 ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200' : 'bg-gray-50'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                  entry.rank === 1 ? 'bg-yellow-400 text-white' :
+                  entry.rank === 2 ? 'bg-gray-400 text-white' :
+                  entry.rank === 3 ? 'bg-amber-600 text-white' :
+                  'bg-gray-200 text-gray-600'
+                }`}>
+                  {entry.rank <= 3 ? ['🥇','🥈','🥉'][entry.rank-1] : entry.rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-800 text-sm truncate">{entry.displayName}</div>
+                  <div className="text-xs text-gray-400">{entry.examName}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-orange-500 text-sm">{entry.currentStreak}🔥</div>
+                  <div className="text-xs text-gray-400">best: {entry.longestStreak}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Research Tab (Research-Grade Features) ──────────────────────────
+const ResearchTab = ({ userProfile }) => {
+  return (
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-1">🔬 Research Features</h2>
+        <p className="text-gray-500 text-sm">SM-2 Spaced Repetition, IRT Calibration, Knowledge Graph, Learning Analytics</p>
+      </div>
+
+      {/* Cognitive Load Alert */}
+      <CognitiveLoadAlert />
+
+      {/* Top Row: Analytics + Score Predictor */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <LearningAnalyticsDashboard />
+        <ScorePredictor />
+      </div>
+
+      {/* Middle Row: SRS + Knowledge Graph */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SpacedRepetitionCard />
+        <KnowledgeGraphView />
+      </div>
+
+      {/* Info Card */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-200">
+        <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+          📚 Research-Based Learning
+        </h3>
+        <div className="text-sm text-gray-600 space-y-1">
+          <p>• <strong>SM-2 Spaced Repetition:</strong> Optimizes review timing based on Ebbinghaus forgetting curve</p>
+          <p>• <strong>IRT (Item Response Theory):</strong> Estimates your true ability using 3PL model</p>
+          <p>• <strong>Knowledge Graph:</strong> DAG-based prerequisite mapping ensures proper learning sequence</p>
+          <p>• <strong>Learning Analytics:</strong> Predicts exam score via weighted regression (5 factors)</p>
+          <p>• <strong>Cognitive Load Monitor:</strong> Detects burnout and overload using Sweller's CLT</p>
+          <p>• <strong>Bloom's Taxonomy:</strong> Questions tagged across all 6 cognitive levels</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Dashboard;

@@ -10,6 +10,15 @@ const {
   getStudyRecommendations 
 } = require('../services/topicTracker');
 const { updateStreak, getStreakData } = require('../services/streakTracker');
+const { startSession, endSession, addNoteToSession, getUserSessions, getUserSessionStats } = require('../services/sessionTracker');
+const { checkAndUnlockAchievements, getUserAchievements, getLeaderboard } = require('../services/achievementService');
+const { ContentGeneratorFactory } = require('../models/ContentGenerator');
+const { recordReview, getDueReviews, getAllSchedules } = require('../services/spacedRepetitionService');
+const { recordQuizResponse, getAbilityEstimate } = require('../services/irtService');
+const { getGraph, getUnlockedTopics, getStudyOrder, getLearningPath } = require('../services/knowledgeGraphService');
+const { assignVariant, getAllAssignments, recordOutcome, analyzeExperiment } = require('../services/experimentService');
+const { getAnalyticsReport, getCognitiveLoadAssessment } = require('../services/analyticsService');
+const { createTest, startTest, recordResponse, submitTest, getInsights, getExplanations, getUserTests } = require('../services/pyqService');
 
 router.post('/prompt', async (req, res) => {
   const { prompt, options } = req.body;
@@ -489,6 +498,261 @@ router.post('/streak/update', async (req, res) => {
 
   const result = await updateStreak(userId);
   res.json(result);
+});
+
+// ============ SESSION ROUTES ============
+
+// Start a study session
+router.post('/session/start', async (req, res) => {
+  const { userId, subject, topic } = req.body;
+  if (!userId || !subject || !topic)
+    return res.status(400).json({ error: 'userId, subject, and topic are required' });
+  const result = await startSession(userId, subject, topic);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// End a study session
+router.post('/session/end', async (req, res) => {
+  const { sessionId, confidence, quizScore } = req.body;
+  if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+  const result = await endSession(sessionId, { confidence, quizScore });
+  if (result.success) {
+    // Trigger achievement check asynchronously
+    const userId = req.body.userId;
+    if (userId) checkAndUnlockAchievements(userId).catch(() => {});
+  }
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// Add note to session
+router.post('/session/note', async (req, res) => {
+  const { sessionId, content } = req.body;
+  if (!sessionId || !content) return res.status(400).json({ error: 'sessionId and content are required' });
+  const result = await addNoteToSession(sessionId, content);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// Get user's sessions
+router.get('/session/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { subject } = req.query;
+  const result = await getUserSessions(userId, subject || null);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// Get user session stats
+router.get('/session/stats/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const result = await getUserSessionStats(userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ ACHIEVEMENT ROUTES ============
+
+// Get all achievements with unlock status
+router.get('/achievements/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const result = await getUserAchievements(userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// Manually trigger achievement check
+router.post('/achievements/check', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId is required' });
+  const result = await checkAndUnlockAchievements(userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ LEADERBOARD ============
+
+router.get('/leaderboard', async (req, res) => {
+  const limit = parseInt(req.query.limit) || 10;
+  const result = await getLeaderboard(limit);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ MIND MAP ============
+
+router.post('/mindmap', async (req, res) => {
+  const { subject, topic, examType } = req.body;
+  if (!subject || !topic) return res.status(400).json({ error: 'subject and topic are required' });
+  try {
+    const generator = ContentGeneratorFactory.create('mindmap', subject, topic, examType || null);
+    const result = await generator.generate();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============ DAILY CHALLENGE ============
+
+router.post('/daily-challenge', async (req, res) => {
+  const { subject, topic, examType, difficulty } = req.body;
+  if (!subject || !topic) return res.status(400).json({ error: 'subject and topic are required' });
+  try {
+    const generator = ContentGeneratorFactory.create('challenge', subject, topic, examType || null, { difficulty: difficulty || 'mixed' });
+    const result = await generator.generate();
+
+    // Optionally increment dailyChallengesCompleted counter
+    if (req.body.userId && db) {
+      await db.collection('users').doc(req.body.userId).set(
+        { dailyChallengesCompleted: (await db.collection('users').doc(req.body.userId).get()).data()?.dailyChallengesCompleted + 1 || 1 },
+        { merge: true }
+      );
+    }
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============ SPACED REPETITION ROUTES ============
+
+router.post('/srs/review', async (req, res) => {
+  const { userId, topicId, quality } = req.body;
+  if (!userId || !topicId || quality === undefined) return res.status(400).json({ error: 'userId, topicId, and quality required' });
+  const result = await recordReview(userId, topicId, quality);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/srs/due/:userId', async (req, res) => {
+  const result = await getDueReviews(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/srs/all/:userId', async (req, res) => {
+  const result = await getAllSchedules(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ IRT ROUTES ============
+
+router.post('/irt/response', async (req, res) => {
+  const { userId, itemId, correct, itemParams } = req.body;
+  if (!userId || !itemId || correct === undefined) return res.status(400).json({ error: 'userId, itemId, correct required' });
+  const result = await recordQuizResponse(userId, itemId, correct, itemParams);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/irt/ability/:userId', async (req, res) => {
+  const result = await getAbilityEstimate(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ KNOWLEDGE GRAPH ROUTES ============
+
+router.get('/graph/:userId', async (req, res) => {
+  const { examKey } = req.query;
+  const result = await getGraph(req.params.userId, examKey);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/graph/unlocked/:userId', async (req, res) => {
+  const result = await getUnlockedTopics(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/graph/order/:userId', async (req, res) => {
+  const result = await getStudyOrder(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/graph/path/:userId', async (req, res) => {
+  const { from, to } = req.query;
+  if (!from || !to) return res.status(400).json({ error: 'from and to query params required' });
+  const result = await getLearningPath(req.params.userId, from, to);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ ANALYTICS ROUTES ============
+
+router.get('/analytics/:userId', async (req, res) => {
+  const { totalPlannedTopics } = req.query;
+  const result = await getAnalyticsReport(req.params.userId, totalPlannedTopics ? parseInt(totalPlannedTopics) : null);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/analytics/cognitive/:userId', async (req, res) => {
+  const result = await getCognitiveLoadAssessment(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ EXPERIMENT ROUTES ============
+
+router.post('/experiment/assign', async (req, res) => {
+  const { userId, experimentId } = req.body;
+  if (!userId || !experimentId) return res.status(400).json({ error: 'userId and experimentId required' });
+  const result = await assignVariant(userId, experimentId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/experiment/assignments/:userId', async (req, res) => {
+  const result = await getAllAssignments(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.post('/experiment/outcome', async (req, res) => {
+  const { userId, experimentId, metric, value } = req.body;
+  if (!userId || !experimentId || !metric || value === undefined) return res.status(400).json({ error: 'userId, experimentId, metric, value required' });
+  const result = await recordOutcome(userId, experimentId, metric, value);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/experiment/analyze', async (req, res) => {
+  const { experimentId, metric } = req.query;
+  if (!experimentId || !metric) return res.status(400).json({ error: 'experimentId and metric query params required' });
+  const result = await analyzeExperiment(experimentId, metric);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+// ============ PYQ TEST ROUTES ============
+
+router.post('/pyq/create', async (req, res) => {
+  const { userId, examName, year, subject, questionCount } = req.body;
+  if (!userId || !examName || !year || !subject) return res.status(400).json({ error: 'userId, examName, year, subject required' });
+  const result = await createTest(userId, examName, year, subject, questionCount || 10);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.post('/pyq/start', async (req, res) => {
+  const { userId, testId } = req.body;
+  if (!userId || !testId) return res.status(400).json({ error: 'userId and testId required' });
+  const result = await startTest(userId, testId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.post('/pyq/response', async (req, res) => {
+  const { userId, testId, questionId, answer, timeTaken } = req.body;
+  if (!userId || !testId || !questionId) return res.status(400).json({ error: 'userId, testId, questionId required' });
+  const result = await recordResponse(userId, testId, questionId, answer, timeTaken);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.post('/pyq/submit', async (req, res) => {
+  const { userId, testId } = req.body;
+  if (!userId || !testId) return res.status(400).json({ error: 'userId and testId required' });
+  const result = await submitTest(userId, testId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/pyq/insights/:userId/:testId', async (req, res) => {
+  const { userId, testId } = req.params;
+  const result = await getInsights(userId, testId);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.post('/pyq/explanations', async (req, res) => {
+  const { userId, testId, questionIds } = req.body;
+  if (!userId || !testId) return res.status(400).json({ error: 'userId and testId required' });
+  const result = await getExplanations(userId, testId, questionIds);
+  result.success ? res.json(result) : res.status(500).json(result);
+});
+
+router.get('/pyq/tests/:userId', async (req, res) => {
+  const result = await getUserTests(req.params.userId);
+  result.success ? res.json(result) : res.status(500).json(result);
 });
 
 module.exports = router;

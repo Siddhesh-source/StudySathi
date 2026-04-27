@@ -1,7 +1,7 @@
 /**
  * Streak Manager Class
- * Manages study streaks with proper encapsulation and business logic
- * Demonstrates: Encapsulation, State Management, Business Logic in Classes
+ * Manages daily study streaks with proper encapsulation and business logic
+ * Demonstrates: Encapsulation, State Management, Observer Pattern, Business Logic
  */
 
 const { sendPrompt } = require('../services/gemini');
@@ -13,6 +13,8 @@ class StreakManager {
   #streakHistory;
   #userId;
   #userContext;
+  // ── Observer Pattern ──────────────────────────────────────────
+  #listeners; // { [event]: Function[] }
 
   constructor(userId, streakData = {}) {
     this.#userId = userId;
@@ -21,6 +23,18 @@ class StreakManager {
     this.#lastActiveDate = streakData.lastActiveDate || null;
     this.#streakHistory = streakData.streakHistory || [];
     this.#userContext = streakData.userContext || {};
+    this.#listeners = {};
+  }
+
+  // ── Observer: pub/sub ─────────────────────────────────────────
+  on(event, callback) {
+    if (!this.#listeners[event]) this.#listeners[event] = [];
+    this.#listeners[event].push(callback);
+    return this;
+  }
+
+  #emit(event, data) {
+    (this.#listeners[event] || []).forEach(fn => fn(data));
   }
 
   // Getters
@@ -88,12 +102,29 @@ class StreakManager {
     // Add to history
     this._addToHistory(today, this.#currentStreak);
 
+    // ── Observer: emit events ────────────────────────────────────
+    this.#emit('streakUpdated', {
+      currentStreak: this.#currentStreak,
+      longestStreak: this.#longestStreak,
+      streakBroken,
+    });
+
+    const milestone = this.getMilestone();
+    if (milestone.current && this.#currentStreak === milestone.current.days) {
+      this.#emit('milestoneReached', milestone.current);
+    }
+
+    const isNewRecord = this.#currentStreak === this.#longestStreak && this.#currentStreak > 1;
+    if (isNewRecord) {
+      this.#emit('newRecord', { streak: this.#currentStreak });
+    }
+
     return {
       updated: true,
       currentStreak: this.#currentStreak,
       longestStreak: this.#longestStreak,
       streakBroken,
-      isNewRecord: this.#currentStreak === this.#longestStreak && this.#currentStreak > 1
+      isNewRecord,
     };
   }
 
@@ -221,6 +252,17 @@ Return ONLY the message.`;
     return messages[Math.floor(Math.random() * messages.length)];
   }
 
+  // Compare streaks — used for leaderboard sorting
+  compareTo(other) {
+    return this.#currentStreak - other.currentStreak;
+  }
+
+  toString() {
+    return `StreakManager(${this.#userId}) | streak:${this.#currentStreak} | best:${this.#longestStreak}`;
+  }
+
+  toJSON() { return this.toObject(); }
+
   // Static factory method
   static fromFirestoreData(userId, data) {
     return new StreakManager(userId, {
@@ -234,6 +276,11 @@ Return ONLY the message.`;
         examDate: data.examDate
       }
     });
+  }
+
+  // Sort an array of StreakManager instances by streak (desc) — for leaderboards
+  static sortByStreak(managers) {
+    return [...managers].sort((a, b) => b.compareTo(a));
   }
 }
 

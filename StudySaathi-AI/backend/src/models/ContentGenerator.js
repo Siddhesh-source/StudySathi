@@ -3,7 +3,12 @@
  * Demonstrates OOP principles: Inheritance, Polymorphism, Encapsulation
  */
 
-const { sendPrompt } = require('../services/gemini');
+// Lazy-loaded to break circular dependency: gemini.js ↔ ContentGenerator.js
+let _sendPrompt = null;
+const getSendPrompt = () => {
+  if (!_sendPrompt) _sendPrompt = require('../services/gemini').sendPrompt;
+  return _sendPrompt;
+};
 
 /**
  * Abstract base class for all content generators
@@ -46,7 +51,7 @@ class ContentGenerator {
   }
 
   async executeGeneration(prompt, options) {
-    return await sendPrompt(prompt, options);
+    return await getSendPrompt()(prompt, options);
   }
 
   formatResponse(result) {
@@ -79,13 +84,20 @@ class ExplanationGenerator extends ContentGenerator {
 }
 
 /**
- * Quiz Generator - generates practice questions
+ * Quiz Generator - generates practice questions with Bloom's Taxonomy levels
  */
 class QuizGenerator extends ContentGenerator {
-  constructor(subject, topic, examType, questionCount = 5, difficulty = 'mixed') {
+  constructor(subject, topic, examType, questionCount = 5, difficulty = 'mixed', bloomsDistribution = null) {
     super(subject, topic, examType);
     this._questionCount = questionCount;
     this._difficulty = difficulty;
+    // Default Bloom's distribution: balanced across levels 1-4
+    this._bloomsDistribution = bloomsDistribution || {
+      1: Math.ceil(questionCount * 0.2),  // Remember
+      2: Math.ceil(questionCount * 0.3),  // Understand
+      3: Math.ceil(questionCount * 0.3),  // Apply
+      4: Math.floor(questionCount * 0.2), // Analyze
+    };
   }
 
   buildPrompt() {
@@ -93,12 +105,20 @@ class QuizGenerator extends ContentGenerator {
       ? `Mix of difficulty: ${Math.ceil(this._questionCount * 0.3)} easy, ${Math.ceil(this._questionCount * 0.4)} medium, ${Math.floor(this._questionCount * 0.3)} hard`
       : `All questions should be ${this._difficulty} level`;
 
+    const bloomsGuide = `
+Bloom's Taxonomy Distribution (CRITICAL - follow exactly):
+- ${this._bloomsDistribution[1] || 0} questions at Level 1 (Remember): Direct recall, definitions, facts
+- ${this._bloomsDistribution[2] || 0} questions at Level 2 (Understand): Explain, describe, summarize
+- ${this._bloomsDistribution[3] || 0} questions at Level 3 (Apply): Calculate, solve, use formulas
+- ${this._bloomsDistribution[4] || 0} questions at Level 4 (Analyze): Compare, differentiate, examine`;
+
     return `Create ${this._questionCount} multiple choice questions on "${this._topic}" in ${this._subject}.
 
 ${difficultyGuide}
+${bloomsGuide}
 
 Format each question as:
-Q[N]: [Question]
+Q[N] [Bloom's Level X]: [Question]
 a) [Option]
 b) [Option]
 c) [Option]
@@ -111,22 +131,38 @@ Make questions exam-focused and practical.`;
   formatResponse(result) {
     if (!result.success) return result;
 
-    // Parse questions from text
+    // Parse questions from text and extract Bloom's level
     const questions = this._parseQuestions(result.text);
     return {
       ...result,
       questions,
-      count: questions.length
+      count: questions.length,
+      bloomsDistribution: this._getBloomsDistribution(questions),
     };
   }
 
   _parseQuestions(text) {
-    // Simple parsing logic
-    const questionBlocks = text.split(/Q\d+:/i).slice(1);
-    return questionBlocks.map((block, index) => ({
-      id: index + 1,
-      text: block.trim()
-    }));
+    // Parse with Bloom's level extraction
+    const questionBlocks = text.split(/Q\d+/i).slice(1);
+    return questionBlocks.map((block, index) => {
+      const bloomsMatch = block.match(/\[?Bloom'?s?\s*Level\s*(\d)\]?/i);
+      const bloomsLevel = bloomsMatch ? parseInt(bloomsMatch[1]) : null;
+      return {
+        id: index + 1,
+        text: block.trim(),
+        bloomsLevel,
+      };
+    });
+  }
+
+  _getBloomsDistribution(questions) {
+    const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    questions.forEach(q => {
+      if (q.bloomsLevel && dist[q.bloomsLevel] !== undefined) {
+        dist[q.bloomsLevel]++;
+      }
+    });
+    return dist;
   }
 }
 
@@ -200,31 +236,120 @@ Keep it concise for last-minute revision.`;
 }
 
 /**
+ * Mind Map Generator - generates structured mind map text
+ */
+class MindMapGenerator extends ContentGenerator {
+  buildPrompt() {
+    return `Create a structured mind map for "${this._topic}" in ${this._subject}.
+
+Format:
+CENTRAL TOPIC: ${this._topic}
+
+BRANCH 1: [Main Concept]
+  - Sub-point 1
+  - Sub-point 2
+
+BRANCH 2: [Another Concept]
+  - Sub-point 1
+  - Sub-point 2
+
+(Include 4-6 branches, 2-4 sub-points each. Focus on key exam-relevant concepts.)`;
+  }
+
+  formatResponse(result) {
+    if (!result.success) return result;
+    const branches = this._parseMindMap(result.text);
+    return { ...result, mindMap: { centralTopic: this._topic, branches }, count: branches.length };
+  }
+
+  _parseMindMap(text) {
+    const branches = [];
+    const branchBlocks = text.split(/BRANCH\s+\d+:/i).slice(1);
+    branchBlocks.forEach((block, i) => {
+      const lines = block.trim().split('\n').filter(l => l.trim());
+      const title = lines[0]?.replace(/[\[\]]/g, '').trim() || `Branch ${i + 1}`;
+      const subPoints = lines.slice(1)
+        .map(l => l.replace(/^[-•*]\s*/, '').trim())
+        .filter(Boolean);
+      branches.push({ id: i + 1, title, subPoints });
+    });
+    return branches;
+  }
+}
+
+/**
+ * Daily Challenge Generator — generates a timed challenge quiz
+ */
+class DailyChallengeGenerator extends ContentGenerator {
+  constructor(subject, topic, examType, difficulty = 'mixed') {
+    super(subject, topic, examType);
+    this._difficulty = difficulty;
+  }
+
+  buildPrompt() {
+    return `Create a DAILY CHALLENGE for "${this._topic}" in ${this._subject}.
+
+The challenge should have:
+1. A short intro paragraph (2 sentences)
+2. Exactly 3 multiple-choice questions (difficulty: ${this._difficulty})
+3. One bonus "Think Deeper" open-ended question
+
+Format:
+INTRO: [intro text]
+
+Q1: [question]
+a) [opt] b) [opt] c) [opt] d) [opt]
+Answer: [letter] — [explanation]
+
+Q2: ...
+Q3: ...
+
+BONUS: [open-ended question]`;
+  }
+
+  formatResponse(result) {
+    if (!result.success) return result;
+    return { ...result, challengeType: 'daily', subject: this._subject, topic: this._topic, difficulty: this._difficulty };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Registry-based Factory (Open/Closed Principle)
+// Add new generators by registering — no switch-case modification needed.
+// ─────────────────────────────────────────────────────────────
+const _generatorRegistry = new Map([
+  ['explanation', (s, t, e, o) => new ExplanationGenerator(s, t, e, o.detailLevel)],
+  ['quiz',        (s, t, e, o) => new QuizGenerator(s, t, e, o.questionCount, o.difficulty)],
+  ['flashcards',  (s, t, e, o) => new FlashcardGenerator(s, t, e, o.cardCount)],
+  ['summary',     (s, t, e, _) => new SummaryGenerator(s, t, e)],
+  ['mindmap',     (s, t, e, _) => new MindMapGenerator(s, t, e)],
+  ['challenge',   (s, t, e, o) => new DailyChallengeGenerator(s, t, e, o.difficulty)],
+]);
+
+/**
  * Factory class for creating content generators
- * Implements Factory Pattern
+ * Implements Registry-based Factory Pattern (Open/Closed Principle)
  */
 class ContentGeneratorFactory {
+  /**
+   * Register a new generator type without modifying this class.
+   * @param {string} type - unique type key
+   * @param {Function} creator - (subject, topic, examType, options) => ContentGenerator
+   */
+  static register(type, creator) {
+    if (_generatorRegistry.has(type)) throw new Error(`Generator type "${type}" already registered`);
+    _generatorRegistry.set(type.toLowerCase(), creator);
+  }
+
   static create(type, subject, topic, examType, options = {}) {
-    switch (type.toLowerCase()) {
-      case 'explanation':
-        return new ExplanationGenerator(subject, topic, examType, options.detailLevel);
-      
-      case 'quiz':
-        return new QuizGenerator(subject, topic, examType, options.questionCount, options.difficulty);
-      
-      case 'flashcards':
-        return new FlashcardGenerator(subject, topic, examType, options.cardCount);
-      
-      case 'summary':
-        return new SummaryGenerator(subject, topic, examType);
-      
-      default:
-        throw new Error(`Unknown content type: ${type}`);
-    }
+    const key = type.toLowerCase();
+    const creator = _generatorRegistry.get(key);
+    if (!creator) throw new Error(`Unknown content type: "${type}". Supported: ${[..._generatorRegistry.keys()].join(', ')}`);
+    return creator(subject, topic, examType, options);
   }
 
   static getSupportedTypes() {
-    return ['explanation', 'quiz', 'flashcards', 'summary'];
+    return [..._generatorRegistry.keys()];
   }
 }
 
@@ -234,5 +359,7 @@ module.exports = {
   QuizGenerator,
   FlashcardGenerator,
   SummaryGenerator,
+  MindMapGenerator,
+  DailyChallengeGenerator,
   ContentGeneratorFactory
 };

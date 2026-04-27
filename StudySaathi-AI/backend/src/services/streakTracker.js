@@ -147,7 +147,7 @@ const getStreakData = async (userId) => {
         currentStreak: 0,
         longestStreak: stats.longestStreak,
         message: "😊 Your streak reset, but that's okay! Start fresh today.",
-        streakHistory: stats.totalDaysTracked,
+        streakHistory: data.streakHistory || [],
         streakBroken: true,
         milestone: milestone.next,
       };
